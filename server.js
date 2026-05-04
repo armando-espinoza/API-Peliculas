@@ -2,15 +2,44 @@ require('dotenv').config();
 
 const express = require('express')
 const app = express()
-const port = process.env.PORT;
+const port = process.env.PORT || 1900;
 const sequelize = require('./db.js');
 const bodyParser = require('body-parser');
 const Peliculas = require('./models/peliculas');
 const fs = require('fs');
 const path = require('path');
-
+const jwt = require('jsonwebtoken');
 
 app.use(bodyParser.json());
+
+const SECRET_KEY = 'mi_clave_segura';
+
+//Endpoint para un login 
+
+app.post('/login', (req,res) =>{
+  const { userName, password } = req.body;
+
+
+  //Validación de usuario
+
+  if (userName === 'admin' && password === '1234')
+  {
+    const user = { id: 1, name: 'Armando'  };
+
+    //Generar un token
+    const token = jwt.sign(user, SECRET_KEY, {expiresIn: '1h'});
+
+    res.json({ message: 'loggin exitoso', token });
+  }
+
+  else
+  {
+    res.status(401).json({ message: 'Credenciales inválidas' });
+  }
+});
+
+
+
 
 const logger = (req, res, next) =>{
   const log = ` ${new Date().toLocaleString()} - ${req.method} en ${req.url}\n`;
@@ -20,6 +49,30 @@ const logger = (req, res, next) =>{
 };
 
 app.use(logger);
+
+//Middlewere de validación 
+const verificarToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader.split(' ')[1]; //Formato Bearer 
+
+  if (!token) 
+  {
+    return res.status(401).json({ message: 'Se requiere un token' });
+  }
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err)
+    {
+      return res.status(403).json({ message: 'Token inválido o expirado' });
+    }
+
+    req.user = decoded; //Se guardan los datos del usuario
+    next();
+  });
+};
+
+
+
 //Definición de una función que valide la existencia de un registro usando su id 
 
 async function validarPK(id){
@@ -31,23 +84,6 @@ async function validarPK(id){
     }
   return pelicula;
 }
-
-
-//Validación de la apikey para que sea una api privada
-
-const validarApiKey = (req, res, next) =>{
-  const ApiKey = req.query.key;
-  if (ApiKey === process.env.API_KEY){
-    next();
-  } else{
-    res.status(403).json({
-      error: 'Acceso prohibido',
-      message: 'Se require una API KEY válida'
-    });
-  }
-
-};
-
 
 //Endpoints consulta 
 
@@ -83,10 +119,10 @@ app.get("/Peliculas/:id", async (req,res) =>{
 //POST Peliculas/ 
 //Crea un nuevo registro de película
 //Toma como parámetros el nombre de la película, el nombre del director y la fecha de lanzamiento en formato AAAA-MM-DD
-app.post("/Peliculas", async (req,res) =>{
+app.post("/Peliculas", verificarToken, async (req,res) =>{
   try{
     const { Nombre, Director, Lanzamiento  } = req.body;
-    const nuevaPelicula = Peliculas.create({
+    const nuevaPelicula = await Peliculas.create({
       Nombre: Nombre,
       Director: Director,
       Lanzamiento: Lanzamiento
@@ -102,7 +138,7 @@ app.post("/Peliculas", async (req,res) =>{
 
 //PUT Peliculas/:id
 //Actualizar un registro  
-app.put("/Peliculas/:id", async (req,res) =>{
+app.put("/Peliculas/:id", verificarToken, async (req,res) =>{
   try{
     const pelicula = await validarPK(req.params.id);
     const { Nombre, Director, Lanzamiento } = req.body;
@@ -127,7 +163,7 @@ app.put("/Peliculas/:id", async (req,res) =>{
 
 //DELETE Peliculas/:id
 //Se elimina el registro por completo
-app.delete("/Peliculas/:id", async (req,res) =>{
+app.delete("/Peliculas/:id", verificarToken, async (req,res) =>{
   try{
     const { id } = req.params;
     const pelicula = await Peliculas.findByPk(id);

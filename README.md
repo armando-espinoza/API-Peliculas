@@ -2,7 +2,9 @@
 # API REST de Películas
 
 Esta es una API RESTful para la gestión de un catálogo de películas, construida con Node.js, Express, Sequelize y SQLite.
-
+Solicita un usuario y contraseña, definida para ejemplos prácticos como admin y 1234, esto genera el token.
+Se requiere el token para endpoints que no sean de consulta. 
+Operaciones como crear, actualizar o eliminar registros requieren ser administrador, pero cualquiera puede leerlos.
 ---
 
 ## Características
