@@ -42,5 +42,5 @@ Operaciones como crear, actualizar o eliminar registros requieren ser administra
 ## Instalación
 1. Clonar el repositorio.
 2. Ejecutar `npm install`.
-3. Crear un archivo `.env` basado en `.env.example`.
+3. Crear un archivo `.env`.
 4. Iniciar con `node server.js`.
